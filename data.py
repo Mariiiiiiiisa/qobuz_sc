@@ -4,6 +4,7 @@ import hashlib
 import logging
 import requests
 from urllib.parse import urljoin
+from bundle import Bundle
 # 这个文件主要获取访问各端口的载荷参数
 
 _BASE_URL = "https://play.qobuz.com"
@@ -24,13 +25,14 @@ class DataGet:
         self.api_port = 'https://www.qobuz.com/api.json/0.2/'
         self.sec = None  # secrets里面的参数还需要测试，这里先设None占位
         self.unix = int(time.time())
-        self.user_auth_token = 'm2CNseJeQOeOm6mKYhhdB9uwz-NpnIts97RnX2q_UC3BxkzO03SVRWqwGesJ8FQAJW7IKk6zwn70arhO85JAxw'  # 由于技术原因，目前该对象只能手动获取
+        self.user_auth_token = 'IIzvirRk8qLsgV5hektP5D_eVpq1hRQNY7Cg8KtmJD1zVX__LOwQI1Bvj48cbFRaCUMkTHjQaZvXf9mdqkYLKA'  # 由于技术原因，目前该对象只能手动获取
         self.session.headers.update(
             {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
                 'X-App-Id': self.app_id,
                 "Content-Type": "application/json;charset=UTF-8",
                 'X-User-Auth-Token': self.user_auth_token,
+                'Referer': 'https://play.qobuz.com/',
             }
         )  # 更新请求头
         self.cfg_setup()  # 筛选出有效secret
@@ -48,7 +50,7 @@ class DataGet:
             params = {
                 'album_id': kwargs.get('album_id'),
                 'offset': 0,
-                'limit': 50,
+                'limit': 150,
                 'extras': 'track_ids,albumsFromSameArtist'
             }
         elif endpoint == 'track/getList':
@@ -74,6 +76,17 @@ class DataGet:
                 'intent': 'stream',
                 'request_ts': self.unix,
                 'request_sig': r_sig_hashed
+            }
+        elif endpoint == 'favorite/getUserFavoriteIds':  # 抓取账号的favorite内容
+            params = None
+
+        elif endpoint == 'favorite/delete':  # 从收藏当中删除专辑
+            params = {
+                'track_ids': None,
+                'album_ids': kwargs['album_id'],
+                'artist_ids': None,
+                'label_ids': None,
+                'award_ids': None
             }
         else:
             params = kwargs
@@ -103,6 +116,12 @@ class DataGet:
 
     def track_get_file_url(self, track_id, format_id):
         return self.api_call(endpoint='track/getFileUrl', model='get', track_id=track_id, format_id=format_id)
+
+    def get_favorite_data(self):
+        return self.api_call(endpoint='favorite/getUserFavoriteIds', model='get')
+
+    def delete_album(self, album_id):
+        return self.api_call(endpoint='favorite/delete', model='post', album_id=album_id)
 
     # secrets要过这个测试例子进行筛选
     def test_secret(self):
