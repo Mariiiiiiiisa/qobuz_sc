@@ -14,6 +14,10 @@ logging.basicConfig(level=logging.INFO,
                     stream=sys.stdout,
                     format='%(asctime)s - %(levelname)s: %(message)s')
 
+input_text = input(
+        '如果要单独下载，请输入URL；\n如果要下载收藏曲目，请输入1；\n'
+    )
+
 
 class Core:
     def __init__(self):
@@ -24,7 +28,7 @@ class Core:
         # self.db = self.client['qobuz']
         # self.collection = self.db['track']
         self.last_request_time = 0
-        self.min_interval = 20  # 休眠间隔
+        self.min_interval = 30  # 休眠间隔
         self.downloader = Downloader()
         self.app_id = self.bundle.get_app_id()
         self.secrets = self.bundle.get_secrets()
@@ -91,12 +95,12 @@ class Core:
                     track_data['cover'] = self.track_datas['cover']
                     file_data = self.track_file_url(track_id=track_data['track_id'], format_id=self.format_id)
                     if track_data['streamable']:
-                        self.wait_interval()
                         self.downloader.download_music(file_data=file_data, track_data=track_data)
+                        self.wait_interval()
                     else:
                         logging.info('该曲目不可下载')
             except Exception:
-                raise logging.info('下载异常', exc_info=True)
+                    raise logging.info('下载异常', exc_info=True)
         elif model == 'tracks':  # 下载一首或多首曲目
             try:
                 track_choice = kwargs['track_choice']
@@ -111,8 +115,8 @@ class Core:
                         track_data['cover'] = self.track_datas['cover']
                         file_data = self.track_file_url(track_id=track_data['track_id'], format_id=self.format_id)
                         if track_data['streamable']:
-                            self.wait_interval()
                             self.downloader.download_music(file_data=file_data, track_data=track_data)
+                            self.wait_interval()
                         else:
                             logging.info('该曲目不可下载')
                     else:
@@ -171,14 +175,11 @@ def call_core(core, album_data):
     return total_track_data
 
 
-def main():
-    input_text = input(
-        '如果要单独下载，请输入URL；\n如果要下载收藏曲目，请输入1；\n'
-    )
-    if is_url(input_text):  # 判断为url，单独下载
+def main(text):
+    if is_url(text):  # 判断为url，单独下载
         logging.info('开始单独下载')
         core = Core()
-        album_data = core.album_data(input_text)
+        album_data = core.album_data(text)
         total_track_data = call_core(core=core, album_data=album_data)
         model_choice = input(
             f'请输入想要下载的曲目，取值范围在1-{len(total_track_data)}，多首曲目请输入空格隔开，如果要下载整张专辑，请直接回车执行'
@@ -189,11 +190,15 @@ def main():
         else:
             model = 'tracks'
             core.download(model, total_track_data=total_track_data, track_choice=model_choice)
-
-    elif input_text == '1':  # 判断为数字1，从收藏曲目中下载
+            is_continue = input('下载完成，是否继续下载。是请输入专辑链接，否则任意键退出')
+            if is_url(is_continue):
+                main(is_continue)
+            else:
+                logging.info('程序结束')
+    elif text == '1':  # 判断为数字1，从收藏曲目中下载
         logging.info('开始下载收藏曲目')
         core = Core()
-        favorite_data = core.favorite_data()  # 其实不知有album，还有track，但是track无法获取元数据，所以只能手动下载
+        favorite_data = core.favorite_data()  # 其实不只有album，还有track，但是track无法获取元数据，所以只能手动下载
         albums = favorite_data['albums']  # 每个专辑的id列表
         if albums:  # 存在收藏的专辑
             for album_id in albums:
@@ -205,13 +210,15 @@ def main():
                 logging.info('成功移除收藏')
         else:
             logging.info('没有收藏曲目')
-
     else:
         logging.info('输入无效，请重试')
-        main()
+        retext = input(
+        '如果要单独下载，请输入URL；\n如果要下载收藏曲目，请输入1；\n'
+    )
+        main(retext)
 
 
 if __name__ == '__main__':
-    main()
+    main(input_text)
 
 
