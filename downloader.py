@@ -70,12 +70,12 @@ class Downloader:
             logging.info('音频格式为flac')
             path = os.path.join(dir_path, f"{track_title}.flac")
             with open(path, 'wb') as file:
-                response = requests.get(url, stream=True, proxies=self.proxies)
+                response = requests.get(url, stream=True, proxies=self.proxies, timeout=(10, 20))
                 response.raise_for_status()
                 for chunk in response.iter_content(chunk_size=1024*1024):
                     if chunk:
                         file.write(chunk)
-            logging.info('音频文件下载完成')
+                logging.info('音频文件下载完成')
 
             metadata.tag_flac(track_data=track_data, track_path=path)
         else:
@@ -93,14 +93,13 @@ class Downloader:
 
 def modify_title(title, track_data):  # 修改文件名称
     # 定义不允许的字符模式
-    illegal_chars = r'[<>:"/\\|?*]'
+    illegal_chars = r'[<>:"/\\|?*\n]'
     # 将非法字符替换为空格
     file_name = re.sub(illegal_chars, ' ', title)
-    if "\n" in file_name:
-        filename = re.sub("\n", " ", file_name)
     version = track_data['version']
     if version and (version not in file_name):
         logging.info('检测到版本标识')
+        version = re.sub(illegal_chars, ' ', version)
         new_name = f"{file_name} ({version})"
         return new_name
     else:

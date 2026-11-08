@@ -1,12 +1,13 @@
 import re
 import sys
 import time
+import random
 
 import logging
 
 from data import DataGet
-from bundle import Bundle
 from downloader import Downloader
+from exceptions import TrackDownloadError
 
 # 主程序，负责调度各个模块
 
@@ -23,19 +24,15 @@ class Core:
     def __init__(self):
         self.email = 'xkqk1l0r@outlook.tw'
         self.password = 'Hebe1234'  # 账号密码记得定期修改
-        self.bundle = Bundle()
         # self.client = pymongo.MongoClient('mongodb://localhost:27017')  # mongodb端口预留
         # self.db = self.client['qobuz']
         # self.collection = self.db['track']
         self.last_request_time = 0
         self.min_interval = 30  # 休眠间隔
         self.downloader = Downloader()
-        self.app_id = self.bundle.get_app_id()
-        self.secrets = self.bundle.get_secrets()
-        self.profile = self.bundle.get_profile()
         self.format_id = 27  # 默认下载最高音质
         self.track_datas = dict()  # 负责存储音轨元数据，它的数据结构是{"cover": str, "album_title": str, "tracks": list}
-        self.data_get = DataGet(email=self.email, password=self.password, app_id=self.app_id, secrets=self.secrets, profile=self.profile)
+        self.data_get = DataGet(email=self.email, password=self.password)
 
     def wait_interval(self):
         now = time.time()
@@ -51,12 +48,13 @@ class Core:
             pattern = re.compile(r'/album/(?P<album_id>[^/?#]+)')
             match = pattern.search(album_url)
             if not match:
-                raise logging.info('专辑id匹配失败')
+                logging.error('专辑id匹配失败')
+                raise ValueError('专辑id匹配失败')
             album_id = match.group('album_id')
             data = self.data_get.get_album_data(album_id)  # 返回的是json对象
             return data
         except Exception:
-            raise logging.info('获取专辑信息失败', exc_info=True)
+            raise logging.error('获取专辑信息失败', exc_info=True)
 
     def favorite_data(self):
         logging.info('开始获取收藏曲目')
@@ -83,50 +81,68 @@ class Core:
         data = self.data_get.track_get_file_url(track_id=track_id, format_id=format_id)
         return data
 
-    def download(self, model, **kwargs):
-        total_track_data = kwargs['total_track_data']
-        length = len(total_track_data)
-        if model == 'album':
+
+def run_download(core, model, **kwargs):
+    total_track_data = kwargs['total_track_data']
+    length = len(total_track_data)
+    if model == 'album':  # 专辑下载模式
+        logging.info('开始下载整张专辑')
+        for track_data in total_track_data:
+            logging.info(f"开始下载{track_data['track_title']}")
+            call_download(core, track_data)
+    elif model == 'track':  # 单曲下载模式
+        track_id = kwargs['track_id']
+        track_data = None
+        for data in total_track_data:
+            if data.get('track_id') == track_id:
+                track_data = data
+                break
+        logging.info(f"开始下载单曲{track_data['track_title']}")
+        call_download(core, track_data)
+    elif model == 'tracks':  # 下载一首或多首曲目
+        try:
+            track_choice = kwargs['track_choice']
+            numbers = track_choice.split(" ")  # 返回字符串列表
+            for number in numbers:
+                num = int(number)
+                if 0 < num <= length:
+                    index = num - 1
+                    logging.info(f"开始下载单曲{total_track_data[index]['track_title']}")
+                    track_data = total_track_data[index]
+                    call_download(core, track_data)
+                else:
+                    track_choice = input('输入值非法，请重新输入')
+                    return core.run_download(model='tracks', total_track_data=total_track_data, track_choice=track_choice)
+        except ValueError:
+            track_choice = input('输入值非法，请重新输入')
+            return core.run_download(model='tracks', total_track_data=total_track_data, track_choice=track_choice)
+
+
+def call_download(core, track_data):
+    track_data['album_title'] = core.track_datas['album_title']
+    track_data['cover'] = core.track_datas['cover']
+    track_id = track_data['track_id']
+    file_data = core.track_file_url(track_id=track_id, format_id=core.format_id)
+    if track_data['streamable']:
+        attempt = 1
+        while attempt <= 3:  # 重试逻辑
             try:
-                logging.info('开始下载整张专辑')
-                for track_data in total_track_data:
-                    logging.info(f"开始下载{track_data['track_title']}")
-                    track_data['album_title'] = self.track_datas['album_title']
-                    track_data['cover'] = self.track_datas['cover']
-                    file_data = self.track_file_url(track_id=track_data['track_id'], format_id=self.format_id)
-                    if track_data['streamable']:
-                        self.downloader.download_music(file_data=file_data, track_data=track_data)
-                        self.wait_interval()
-                    else:
-                        logging.info('该曲目不可下载')
+                core.downloader.download_music(file_data=file_data, track_data=track_data)
+                core.data_get.delete_track(track_id)
+                logging.info('删除成功')
+                break
             except Exception:
-                    raise logging.info('下载异常', exc_info=True)
-        elif model == 'tracks':  # 下载一首或多首曲目
-            try:
-                track_choice = kwargs['track_choice']
-                numbers = track_choice.split(" ")  # 返回字符串列表
-                for number in numbers:
-                    num = int(number)
-                    if 0 < num <= length:
-                        index = num - 1
-                        logging.info(f"开始下载单曲{total_track_data[index]['track_title']}")
-                        track_data = total_track_data[index]
-                        track_data['album_title'] = self.track_datas['album_title']
-                        track_data['cover'] = self.track_datas['cover']
-                        file_data = self.track_file_url(track_id=track_data['track_id'], format_id=self.format_id)
-                        if track_data['streamable']:
-                            self.downloader.download_music(file_data=file_data, track_data=track_data)
-                            self.wait_interval()
-                        else:
-                            logging.info('该曲目不可下载')
-                    else:
-                        track_choice = input('输入值非法，请重新输入')
-                        return self.download(model='tracks', total_track_data=total_track_data, track_choice=track_choice)
-            except ValueError:
-                track_choice = input('输入值非法，请重新输入')
-                return self.download(model='tracks', total_track_data=total_track_data, track_choice=track_choice)
-        elif model == 'track':  # 只能是一首曲目
-            pass
+                logging.info(f'下载异常，当前下载次数为第{attempt}次')
+                wait = 3 ** attempt + random.uniform(2, 5)
+                time.sleep(wait)
+                attempt += 1
+        else:
+            logging.info('超出最大重试次数，收藏并跳过该曲目')
+            core.data_get.create_track(track_id=track_id)
+            logging.info('收藏创建成功')
+        core.wait_interval()
+    else:
+        logging.info('该曲目不可下载')
 
 
 def meta_data(data):
@@ -134,7 +150,11 @@ def meta_data(data):
 
     track_data['track_title'] = data.get('title')  # 音轨标题
     track_data['track_id'] = data.get('id')  # 音轨id
-    track_data['performer'] = data.get('performer').get('name')  # 作者
+    try:
+        performer = data.get('performer').get('name')
+    except AttributeError:
+        performer = data.get('performers')
+    track_data['performer'] = performer  # 作者
     track_data['track_number'] = data.get('track_number')  # 音轨号
 
     track_data['copyright'] = data.get('copyright')  # 获取版权标识
@@ -186,10 +206,15 @@ def main(text):
         )
         if not model_choice:
             model = 'album'
-            core.download(model, total_track_data=total_track_data)
+            run_download(core, model, total_track_data=total_track_data)
+            is_continue = input('下载完成，是否继续下载。是请输入专辑链接，否则任意键退出')
+            if is_url(is_continue):
+                main(is_continue)
+            else:
+                logging.info('程序结束')
         else:
             model = 'tracks'
-            core.download(model, total_track_data=total_track_data, track_choice=model_choice)
+            run_download(core, model, total_track_data=total_track_data, track_choice=model_choice)
             is_continue = input('下载完成，是否继续下载。是请输入专辑链接，否则任意键退出')
             if is_url(is_continue):
                 main(is_continue)
@@ -200,13 +225,25 @@ def main(text):
         core = Core()
         favorite_data = core.favorite_data()  # 其实不只有album，还有track，但是track无法获取元数据，所以只能手动下载
         albums = favorite_data['albums']  # 每个专辑的id列表
+        tracks = favorite_data['tracks']  # 返回收藏单曲列表
         if albums:  # 存在收藏的专辑
             for album_id in albums:
                 album_data = core.data_get.get_album_data(album_id)
                 total_track_data = call_core(core=core, album_data=album_data)
                 model = 'album'
-                core.download(model, total_track_data=total_track_data)
+                run_download(core, model, total_track_data=total_track_data)
                 core.data_get.delete_album(album_id)
+                logging.info('成功移除收藏')
+        if tracks:
+            get_list = core.data_get.get_track_list(tracks_id=tracks)
+            tracks_data = get_list.get('tracks')  # 获取所有音轨信息
+            for track_data in tracks_data:
+                album_id = track_data.get('album').get('id')
+                track_id = track_data.get('id')
+                album_data = core.data_get.get_album_data(album_id)
+                total_track_data = call_core(core=core, album_data=album_data)
+                model = 'track'
+                run_download(core, model, total_track_data=total_track_data, track_id=track_id)
                 logging.info('成功移除收藏')
         else:
             logging.info('没有收藏曲目')
