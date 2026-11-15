@@ -6,6 +6,8 @@ import requests
 from urllib.parse import urljoin
 from collections import OrderedDict
 
+from settings import load_settings
+
 # 这个文件的主要目的是获取appid和secrets
 
 logging.basicConfig(level=logging.INFO,
@@ -66,7 +68,9 @@ _SESSION_PROFILE_REGEX = re.compile(
 
 class Bundle:
     def __init__(self):
-        self.proxies = {'http': 'http://127.0.0.1:7890'}
+        setting = load_settings()
+        self.proxy = setting['proxy']
+        self.proxies = {'http': self.proxy, 'https': self.proxy}
 
         logging.info('获取登录页')
         response = requests.get(urljoin(_BASE_URL, '/login'), proxies=self.proxies)
@@ -74,7 +78,7 @@ class Bundle:
         # 获取bundle的href
         bundle_url_match = _BUNDLE_URL_REGEX.search(response.text)  # 如果匹配成功就是这样的：<re.Match object; span=(5936, 5991), match='<script src="/resources/8.2.0-b034/bundle.js"></s>
         if not bundle_url_match:
-            raise logging.info('bundle.js地址匹配失败')
+            raise NotImplementedError('bundle.js地址匹配失败')
 
         bundle_href = bundle_url_match.group(1)  # /resources/8.2.0-b034/bundle.js
 
@@ -86,7 +90,7 @@ class Bundle:
         logging.info('获取appID')
         match = _APP_ID_REGEX.search(self.bundle)
         if not match:
-            logging.info('appID匹配失败')
+            raise NotImplementedError('appID匹配失败')
         return match.group("app_id")
 
     def get_secrets(self):
@@ -125,6 +129,6 @@ class Bundle:
         logging.info('开始获取profile')
         pro_match = _SESSION_PROFILE_REGEX.search(self.bundle)
         if not pro_match:
-            logging.info('profile获取失败')
+            raise NotImplementedError('profile获取失败')
         return pro_match.group("profile")
 

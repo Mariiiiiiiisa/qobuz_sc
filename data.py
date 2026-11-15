@@ -7,6 +7,9 @@ import requests
 from urllib.parse import urljoin
 
 from bundle import Bundle
+from settings import load_settings
+
+from exceptions import InvalidSecretError
 # 这个文件主要获取访问各端口的载荷参数
 
 _BASE_URL = "https://play.qobuz.com"
@@ -16,19 +19,22 @@ logging.basicConfig(level=logging.INFO,
 
 
 class DataGet:
-    def __init__(self, email, password):
-        self.email = email
-        self.password = password
+    def __init__(self):
+        setting = load_settings()
+        self.email = setting['email']
+        self.password = setting['password']
+        self.format_id = setting['format_id']
         self.bundle = Bundle()
         self.app_id = self.bundle.get_app_id()
         self.secrets = self.bundle.get_secrets()
         self.profile = self.bundle.get_profile()
         self.session = requests.session()
-        self.proxies = {'http': 'http://127.0.0.1:7890'}
+        self.proxy = setting['proxy']
+        self.proxies = {'http': self.proxy, 'https': self.proxy}
         self.api_port = 'https://www.qobuz.com/api.json/0.2/'
         self.sec = None  # secrets里面的参数还需要测试，这里先设None占位
-        self.unix = int(time.time())
-        self.user_auth_token = 'IIzvirRk8qLsgV5hektP5D_eVpq1hRQNY7Cg8KtmJD1zVX__LOwQI1Bvj48cbFRaCUMkTHjQaZvXf9mdqkYLKA'  # 由于技术原因，目前该对象只能手动获取
+        # self.unix = int(time.time())
+        self.user_auth_token = setting['user_auth_token']  # 由于技术原因，目前该对象只能手动获取
         self.session.headers.update(
             {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
@@ -43,12 +49,13 @@ class DataGet:
 
     def api_call(self, endpoint, model, **kwargs):
         if endpoint == 'session/start':
+            unix = int(time.time())
             self.session.headers.update({"Content-Type": "application/json;charset=UTF-8"})
-            r_sig = 'sessionstartprofile{}{}{}'.format(self.profile, self.unix, self.sec)
+            r_sig = 'sessionstartprofile{}{}{}'.format(self.profile, unix, self.sec)
             r_sig_hashed = hashlib.md5(r_sig.encode('utf-8')).hexdigest()
             params = {
                 'profile': self.profile,
-                'request_ts': self.unix,
+                'request_ts': unix,
                 'request_sig': r_sig_hashed
             }
             data = None
@@ -67,27 +74,29 @@ class DataGet:
                 'tracks_id': [kwargs.get('track_id')]
             }
             data = None
-        elif endpoint == 'file/url':
+        elif endpoint == 'file/url':  # 这个端口目前弃用
+            unix = int(time.time())
             self.session.headers.update({"Content-Type": "application/json;charset=UTF-8"})
-            r_sig = 'fileurlformat_id{}intentstreamtrack_id{}{}{}'.format(kwargs.get('format_id'), kwargs.get('track_id'), self.unix, self.sec)
+            r_sig = 'fileurlformat_id{}intentstreamtrack_id{}{}{}'.format(kwargs.get('format_id'), kwargs.get('track_id'), unix, self.sec)
             r_sig_hashed = hashlib.md5(r_sig.encode('utf-8')).hexdigest()
             params = {
                 'track_id': kwargs.get('track_id'),
                 'format_id': kwargs.get('format_id'),  # 这个format_id的值是字符串类型
                 'intent': 'stream',
-                'request_ts': self.unix,
+                'request_ts': unix,
                 'request_sig': r_sig_hashed
             }
             data = None
         elif endpoint == 'track/getFileUrl':
+            unix = int(time.time())
             self.session.headers.update({"Content-Type": "application/json;charset=UTF-8"})
-            r_sig = 'trackgetFileUrlformat_id{}intentstreamtrack_id{}{}{}'.format(kwargs.get('format_id'), kwargs.get('track_id'), self.unix, self.sec)
+            r_sig = 'trackgetFileUrlformat_id{}intentstreamtrack_id{}{}{}'.format(kwargs.get('format_id'), kwargs.get('track_id'), unix, self.sec)
             r_sig_hashed = hashlib.md5(r_sig.encode('utf-8')).hexdigest()
             params = {
                 'track_id': kwargs.get('track_id'),
                 'format_id': kwargs.get('format_id'),  # 这个format_id的值是字符串类型
                 'intent': 'stream',
-                'request_ts': self.unix,
+                'request_ts': unix,
                 'request_sig': r_sig_hashed
             }
             data = None
@@ -178,8 +187,8 @@ class DataGet:
         try:
             self.api_call(endpoint="session/start", model='post')
             return True
-        except Exception:
-            return logging.info('无效secret')
+        except InvalidSecretError:
+            return False
 
     def cfg_setup(self):
         for secret in self.secrets:
@@ -192,7 +201,7 @@ class DataGet:
                 break
 
         if self.sec is None:
-            raise logging.info('没有有效secret，抛出异常', exc_info=True)
+            raise InvalidSecretError('没有有效secret，请重试程序')
 
 
 

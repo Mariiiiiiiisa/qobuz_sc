@@ -5,14 +5,17 @@ import requests
 import logging
 
 import metadata
+from settings import load_settings
 
 # 负责下载音频文件
 
 
 class Downloader:
     def __init__(self):
-        self.path = 'F://music//{}'  # 下载路径
-        self.proxies = {'http': 'http://127.0.0.1:7890'}
+        setting = load_settings()
+        self.path = setting['path']  # 下载路径
+        self.proxy = setting['proxy']
+        self.proxies = {'http': self.proxy, 'https': self.proxy}
 
     def download_track(self, track_data, file_data):  # 这里是file/url的下载函数
         logging.info('开始检测音轨')
@@ -56,13 +59,13 @@ class Downloader:
         track_title = modify_title(track_data.get('track_title'), track_data)
         album_title = safe_name(track_data['album_title'])
 
-        dir_path = self.path.format(f"{album_title}")
+        dir_path = os.path.join(self.path, f"{album_title}")
         os.makedirs(dir_path, exist_ok=True)
 
-        try:
-            track_data.get('restrictions')
+        restriction = track_data.get('restrictions')
+        if restriction:
             logging.info(f"检测到音质降级，实际最高音质为{bit_depth}-Bit, {sampling_rate}kHz")
-        except Exception:
+        else:
             logging.info(f"检测为最高音质，{bit_depth}-Bit, {sampling_rate}kHz")
 
         url = file_data.get('url')

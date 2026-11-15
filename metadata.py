@@ -6,7 +6,11 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, ID3NoHeaderError
 import mutagen.id3 as id3
 
-proxies = {'http': 'http://127.0.0.1:7890'}
+from settings import load_settings
+
+setting = load_settings()
+proxy = setting['proxy']
+proxies = {'http': proxy, 'https': proxy}
 
 
 def tag_flac(track_data, track_path):
@@ -23,12 +27,13 @@ def tag_flac(track_data, track_path):
     # 嵌入封面
     picture = Picture()
     picture.type = 3
-    picture.mime = 'image/ipeg'
+    picture.mime = 'image/jpeg'
     picture.desc = 'Cover'
 
     image_url = track_data.get('cover')
-    image = requests.get(image_url, proxies=proxies).content
-    picture.data = image
+    response = requests.get(image_url, proxies=proxies, timeout=(10, 60))
+    response.raise_for_status()
+    picture.data = response.content
     audio.add_picture(picture)
 
     audio.save()
