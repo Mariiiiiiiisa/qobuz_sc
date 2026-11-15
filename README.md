@@ -18,7 +18,7 @@
 ## 环境要求
 
 - Python 3.8+
-- 一个有效的 Qobuz 会员账号
+- 一个有效的 Qobuz 会员账号，并在https://play.qobuz.com/discover中登录
 - 需要代理，请准备好 HTTP/HTTPS 代理地址
 
 ### 依赖
@@ -43,6 +43,12 @@ git clone https://github.com/Mariiiiiiiisa/qobuz_sc.git
 cd qobuz_sc
 pip install -r requirements.txt   # 或手动 pip install requests mutagen
 ```
+
+方法二（推荐）：
+
+直接下载zip文件并解压到本地，然后安装vscode，在vscode中打开解压的文件夹。然后下载python并安装requests库和mutagen库(这一步不会可以去b站搜教程)点击左侧文件夹中的core.py文件，在左上角点击运行python文件。然后根据提示输入内容即可。
+
+---
 
 项目文件结构如下：
 
@@ -82,7 +88,7 @@ format_id = 27
 min_interval = 30
 
 [network]
-; 代理服务地址必填，例如 http://127.0.0.1:7890
+; 代理服务地址必填，例如 http://***.*.*.*:****
 proxy =
 ```
 
@@ -113,8 +119,12 @@ proxy =
 2. 打开开发者工具（F12）→ Network 面板。
 3. 刷新页面，找到任意发往 `login` 的请求。
 4. 点击login在请求头里找到 `X-User-Auth-Token`，复制其值填入 `config.cfg`。
+   
+   ![](C:\Users\吴晨宇\AppData\Roaming\marktext\images\2026-11-15-21-10-34-image.png)
 
-> Token 会过期，出现 401/403 时请重新获取。
+### 如何获取自己的代理地址
+
+前提是本地已有代理，例如客户端是使用clash verge，可以在系统代理开关处的设置图表中查看自己的服务地址，根据示例补充成完整的链接。
 
 ---
 
@@ -124,7 +134,14 @@ proxy =
 python core.py
 ```
 
+或者在vscode中选择core.py文件然后运行该文件。
+
 启动后根据提示输入：
+
+```text```
+如果要单独下载，请输入URL；
+如果要下载收藏曲目，请输入1；
+```
 
 ### 1. 单独下载专辑
 
@@ -148,23 +165,23 @@ https://play.qobuz.com/album/xxxxxxxxxxxxx
 - 输入 `1 3 5`：只下载第 1、3、5 首
 - 输入 `1`：只下载第 1 首
 
+下载完成后，程序会询问是否继续：
+
+```
+下载完成，是否继续下载。是请输入专辑链接，否则任意键退出
+```
+
+输入新的专辑链接可继续，输入其他任意内容退出。
+
 ### 2. 下载收藏
 
 输入 `1`，程序会：
 
 1. 拉取账号收藏的专辑 ID 列表与单曲 ID 列表
-2. 逐张专辑下载全部曲目，完成后移除专辑收藏
-3. 逐个单曲下载，完成后移除单曲收藏
+2. 注意！！！逐张专辑下载全部曲目，完成后移除专辑收藏
+3. 注意！！！逐个单曲下载，完成后移除单曲收藏
 
-### 3. 下载完成后
-
-程序会询问是否继续：
-
-```text
-下载完成，是否继续下载。是请输入专辑链接，否则任意键退出
-```
-
-输入新的专辑链接可继续，输入其他任意内容退出。
+如果介意收藏删除的话请手动下载，不要使用该下载模式。
 
 ### 输出目录结构
 
@@ -172,7 +189,6 @@ https://play.qobuz.com/album/xxxxxxxxxxxxx
 <download.path>/
 └── <专辑名>/
     ├── <曲名>.flac
-    └── <曲名>.mp3
 ```
 
 文件名会自动清理 Windows 不允许的字符（`<>:"/\|?*` 等）。
@@ -229,22 +245,7 @@ core.py
 说明从 `bundle.js` 提取的 secret 全部无效，通常原因：
 
 1. Qobuz 前端代码结构变更，正则不再匹配 → 需要更新 `bundle.py` 中的正则
-2. 网络请求被拦截或返回了非预期页面 → 检查代理是否可用，手动访问 `https://play.qobuz.com/login` 是否能正常打开
-3. 账号/token 失效 → 重新获取 `user_auth_token`
-
-### 报 `401` / `403`
-
-- Token 过期：重新从浏览器获取 `X-User-Auth-Token`
-- 账号无会员：无法获取高质量音频
-- 代理被风控：更换代理或降低请求频率
-
-### 报 `HTTPError: 404` 或 `bundle.js地址匹配失败`
-
-Qobuz 页面结构变化，`_BUNDLE_URL_REGEX` 需要更新。可手动打开登录页，搜索 `bundle.js` 确认当前路径格式。
-
-### 下载的 FLAC 没有封面
-
-`metadata.tag_flac()` 会请求 `cover` 地址并嵌入封面。若封面请求失败（404、超时、代理问题），会抛出异常并中断元数据写入。检查 `image.large` 地址是否可访问，或适当增大 `timeout`。
+2. 网络请求被拦截或返回了非预期页面 → 检查代理是否可用，手动访问 `https://play.qobuz.com/discover` 是否能正常打开
 
 ### 所有曲目都下载失败
 
@@ -252,11 +253,6 @@ Qobuz 页面结构变化，`_BUNDLE_URL_REGEX` 需要更新。可手动打开登
 
 - 代理未生效：`network.proxy` 填写错误，或代理只支持 HTTP 不支持 HTTPS
 - 账号无权限：会员过期
-- `format_id` 超出账号权限：尝试改为 `6`
-
-### 下载完成后收藏被意外删除
-
-当前版本的 `run_download()` 在下载成功后会调用 `delete_album` / `delete_track` 移除收藏。如果你不希望删除收藏，请注释掉 `core.py` 中对应的 `delete_album` / `delete_track` 调用。
 
 ### 程序在某首歌上卡住很久
 
@@ -266,32 +262,23 @@ Qobuz 页面结构变化，`_BUNDLE_URL_REGEX` 需要更新。可手动打开登
 
 ## 已知限制
 
-- **依赖 Qobuz 私有 API 与前端 bundle**：Qobuz 更新前端或调整接口后，`bundle.py` 的正则和 `data.py` 的端点可能失效，需要手动更新。
-- **`format_id` 与账号权限绑定**：请求超出权限的音质可能返回降级结果或错误，代码通过 `restrictions` 字段判断并打印日志，但不会自动降级重试。
+- **依赖 Qobuz 私有 API 与前端 bundle**：Qobuz 更新前端或调整接口后，`bundle.py` 的正则和 `data.py` 的端点可能失效。
 - **`email` / `password` 未使用**：当前认证完全依赖 `user_auth_token`，请勿在公开仓库提交含真实 token 的 `config.cfg`。
 - **不支持并发下载**：所有请求串行执行，通过 `min_interval` 控制频率。请勿将 `min_interval` 设为 0，以免触发风控。
-- **不支持断点续传**：下载中断会留下不完整文件，重试会覆盖。
-- **仅支持单账号**：不支持多账号切换。
-
----
-
-## 项目模块说明
-
-| 文件              | 职责                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------- |
-| `bundle.py`     | 请求登录页，定位并下载 `bundle.js`，用正则提取 `app_id`、`secrets`、`profile`                                          |
-| `data.py`       | 封装 Qobuz API 调用：`session/start`、`album/get`、`track/getFileUrl`、`favorite/*`、`meta/getList`，负责签名与请求头 |
-| `downloader.py` | 根据 `file_data.url` 流式下载音频，按 `format_id` 写入 `.flac` 或 `.mp3`                                         |
-| `metadata.py`   | 使用 `mutagen` 写入标题、艺术家、专辑、音轨号、版权与封面                                                                  |
-| `core.py`       | 主入口：解析用户输入、调度下载、管理收藏、控制请求间隔                                                                         |
-| `settings.py`   | 读取并校验 `config.cfg`                                                                                  |
-| `exceptions.py` | 自定义异常：`InvalidSecretError`、`AlbumDataError`、`FavoriteError`                                         |
 
 ---
 
 ## 致谢
 
 本项目特别致谢vitiko98的项目[*qobuz-dl*](https://github.com/vitiko98/qobuz-dl)本项目的签证构造在很大程度上依赖前者的探索。
+
+---
+
+## 保命声明（
+
+脚本小子写的粪作，还望大佬海涵，轻点喷
+
+---
 
 ## 免责声明
 
