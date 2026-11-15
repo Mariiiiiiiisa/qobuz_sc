@@ -10,7 +10,6 @@ def load_settings(path='config.cfg'):
     cfg.read(path, encoding='utf-8')
     try:
         user_auth_token = cfg['account']['user_auth_token']
-        proxy = cfg['network']['proxy']
         format_id = cfg.getint('download', 'format_id')
         path = cfg['download']['path']
         min_interval = cfg.getint('download', 'min_interval')
@@ -24,7 +23,6 @@ def load_settings(path='config.cfg'):
         'path': path,
         'format_id': format_id,
         'min_interval': min_interval,
-        'proxy': proxy,
         'mongodb_address': cfg['account'].get('mongodb_address', None),
         'user_auth_token': user_auth_token
     }

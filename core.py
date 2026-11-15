@@ -2,7 +2,6 @@ import re
 import sys
 import time
 import random
-
 import logging
 
 from data import DataGet

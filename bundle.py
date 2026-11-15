@@ -68,12 +68,8 @@ _SESSION_PROFILE_REGEX = re.compile(
 
 class Bundle:
     def __init__(self):
-        setting = load_settings()
-        self.proxy = setting['proxy']
-        self.proxies = {'http': self.proxy, 'https': self.proxy}
-
         logging.info('获取登录页')
-        response = requests.get(urljoin(_BASE_URL, '/login'), proxies=self.proxies)
+        response = requests.get(urljoin(_BASE_URL, '/login'))
 
         # 获取bundle的href
         bundle_url_match = _BUNDLE_URL_REGEX.search(response.text)  # 如果匹配成功就是这样的：<re.Match object; span=(5936, 5991), match='<script src="/resources/8.2.0-b034/bundle.js"></s>
@@ -83,7 +79,7 @@ class Bundle:
         bundle_href = bundle_url_match.group(1)  # /resources/8.2.0-b034/bundle.js
 
         # 获取bundle.js文件
-        bundle_response = requests.get(urljoin(_BASE_URL, bundle_href), proxies=self.proxies)
+        bundle_response = requests.get(urljoin(_BASE_URL, bundle_href))
         self.bundle = bundle_response.text
 
     def get_app_id(self):

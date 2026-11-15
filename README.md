@@ -18,8 +18,8 @@
 ## 环境要求
 
 - Python 3.8+
-- 一个有效的 Qobuz 会员账号，并在 https://play.qobuz.com/discover 中登录
-- 需要代理，请准备好 HTTP/HTTPS 代理地址
+- 一个有效的 Qobuz 会员账号，并在https://play.qobuz.com/discover中登录
+- 需要代理，启动程序前确保代理启用
 
 ### 依赖
 
@@ -46,7 +46,7 @@ pip install -r requirements.txt   # 或手动 pip install requests mutagen
 
 方法二（推荐）：
 
-直接下载zip文件并解压到本地，然后安装vscode，在vscode中打开解压的文件夹。然后下载python并安装requests库和mutagen库(这一步不会可以去b站搜教程)
+直接下载zip文件并解压到本地，然后安装vscode，在vscode中打开解压的文件夹。然后下载python并安装requests库和mutagen库(这一步不会可以去b站搜教程)点击左侧文件夹中的core.py文件，在左上角点击运行python文件。然后根据提示输入内容即可。
 
 ---
 
@@ -87,22 +87,18 @@ format_id = 27
 ; 最小下载间隔必填，单位秒
 min_interval = 30
 
-[network]
-; 代理服务地址必填，例如 http://***.*.*.*:****
-proxy =
 ```
 
 ### 字段说明
 
-| 字段                           | 必填  | 说明                                       |
-| ---------------------------- | --- | ---------------------------------------- |
-| `account.user_auth_token`    | 是   | Qobuz 登录后的用户令牌，获取方式见下文                   |
-| `account.email` / `password` | 否   | 当前版本未使用，保留字段                             |
-| `account.mongodb_address`    | 否   | 当前版本未使用，预留字段                             |
-| `download.path`              | 是   | 下载根目录，专辑会在此目录下建同名子文件夹                    |
-| `download.format_id`         | 是   | 音质 ID，见下表                                |
-| `download.min_interval`      | 是   | 两次下载之间的最小间隔（秒），建议不低于 30                  |
-| `network.proxy`              | 是   | HTTP/HTTPS 代理地址；不需要代理时也需填写一个可用的值，否则请求会失败 |
+| 字段                           | 必填  | 说明                      |
+| ---------------------------- | --- | ----------------------- |
+| `account.user_auth_token`    | 是   | Qobuz 登录后的用户令牌，获取方式见下文  |
+| `account.email` / `password` | 否   | 当前版本未使用，保留字段            |
+| `account.mongodb_address`    | 否   | 当前版本未使用，预留字段            |
+| `download.path`              | 是   | 下载根目录，专辑会在此目录下建同名子文件夹   |
+| `download.format_id`         | 是   | 音质 ID，见下表               |
+| `download.min_interval`      | 是   | 两次下载之间的最小间隔（秒），建议不低于 30 |
 
 ### format_id 取值
 
@@ -116,15 +112,14 @@ proxy =
 ### 如何获取 user_auth_token
 
 1. 浏览器打开 `https://play.qobuz.com` 并登录qobuz会员账号。
+
 2. 打开开发者工具（F12）→ Network 面板。
+
 3. 刷新页面，找到任意发往 `login` 的请求。
+
 4. 点击login在请求头里找到 `X-User-Auth-Token`，复制其值填入 `config.cfg`。
    
    ![](C:\Users\吴晨宇\AppData\Roaming\marktext\images\2026-11-15-21-10-34-image.png)
-
-### 如何获取自己的代理地址
-
-前提是本地已有代理，例如客户端是使用clash verge，可以在系统代理开关处的设置图表中查看自己的服务地址，根据示例补充成完整的链接。
 
 ---
 
@@ -141,8 +136,8 @@ python core.py
 ```text```
 如果要单独下载，请输入URL；
 如果要下载收藏曲目，请输入1；
-```
 
+```
 ### 1. 单独下载专辑
 
 输入专辑链接，例如：
@@ -265,6 +260,7 @@ core.py
 - **依赖 Qobuz 私有 API 与前端 bundle**：Qobuz 更新前端或调整接口后，`bundle.py` 的正则和 `data.py` 的端点可能失效。
 - **`email` / `password` 未使用**：当前认证完全依赖 `user_auth_token`，请勿在公开仓库提交含真实 token 的 `config.cfg`。
 - **不支持并发下载**：所有请求串行执行，通过 `min_interval` 控制频率。请勿将 `min_interval` 设为 0，以免触发风控。
+- **代理硬性要求**：由于requests库发起的请求会走系统代理，这里就在构造请求的时候就略掉了proxies参数的设置。
 
 ---
 

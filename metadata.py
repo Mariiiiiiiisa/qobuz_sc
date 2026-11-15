@@ -8,9 +8,6 @@ import mutagen.id3 as id3
 
 from settings import load_settings
 
-setting = load_settings()
-proxy = setting['proxy']
-proxies = {'http': proxy, 'https': proxy}
 
 
 def tag_flac(track_data, track_path):
@@ -31,7 +28,7 @@ def tag_flac(track_data, track_path):
     picture.desc = 'Cover'
 
     image_url = track_data.get('cover')
-    response = requests.get(image_url, proxies=proxies, timeout=(10, 60))
+    response = requests.get(image_url, timeout=(10, 60))
     response.raise_for_status()
     picture.data = response.content
     audio.add_picture(picture)
@@ -51,7 +48,7 @@ def tag_mp3(track_data, track_path):
     audio["TALB"] = id3.TALB(encoding=3, text=track_data['album_title'])  # 专辑
 
     image_url = track_data.get('cover')
-    image = requests.get(image_url, proxies=proxies).content
+    image = requests.get(image_url).content
     audio["APIC"] = id3.APIC(encoding=3, mime="image/jpeg", type=3, desc="", data=image)
 
     audio.save(track_path, v2_version=3)

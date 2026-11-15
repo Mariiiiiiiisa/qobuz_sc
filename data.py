@@ -29,8 +29,6 @@ class DataGet:
         self.secrets = self.bundle.get_secrets()
         self.profile = self.bundle.get_profile()
         self.session = requests.session()
-        self.proxy = setting['proxy']
-        self.proxies = {'http': self.proxy, 'https': self.proxy}
         self.api_port = 'https://www.qobuz.com/api.json/0.2/'
         self.sec = None  # secrets里面的参数还需要测试，这里先设None占位
         # self.unix = int(time.time())
@@ -142,11 +140,11 @@ class DataGet:
         logging.info('开始请求，请求端口 %s', endpoint)
         if model == 'post':
             # 这里注意params和data的差异：params可以理解为在url这个头上做文章，而data是身体，传递的是表单数据
-            response = self.session.post(urljoin(self.api_port, endpoint), params=params, data=data, proxies=self.proxies)
+            response = self.session.post(urljoin(self.api_port, endpoint), params=params, data=data)
             response.raise_for_status()
             return response.json()
         elif model == 'get':
-            response = self.session.get(urljoin(self.api_port, endpoint), params=params, proxies=self.proxies)
+            response = self.session.get(urljoin(self.api_port, endpoint), params=params)
             response.raise_for_status()
             return response.json()
 
@@ -187,8 +185,8 @@ class DataGet:
         try:
             self.api_call(endpoint="session/start", model='post')
             return True
-        except InvalidSecretError:
-            return False
+        except Exception:
+            return logging.info('无效secret')
 
     def cfg_setup(self):
         for secret in self.secrets:

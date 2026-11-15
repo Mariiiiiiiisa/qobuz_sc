@@ -14,8 +14,6 @@ class Downloader:
     def __init__(self):
         setting = load_settings()
         self.path = setting['path']  # 下载路径
-        self.proxy = setting['proxy']
-        self.proxies = {'http': self.proxy, 'https': self.proxy}
 
     def download_track(self, track_data, file_data):  # 这里是file/url的下载函数
         logging.info('开始检测音轨')
@@ -41,7 +39,7 @@ class Downloader:
             path = self.path.format(f'seg{segment}.mp4')
             with open(path, 'wb') as file:
                 segment_url = pattern_url.format(segment)
-                response = requests.get(segment_url, stream=True, proxies=self.proxies)
+                response = requests.get(segment_url, stream=True)
                 response.raise_for_status()
                 for chunk in response.iter_content(chunk_size=1024*1024):
                     if chunk:
@@ -73,7 +71,7 @@ class Downloader:
             logging.info('音频格式为flac')
             path = os.path.join(dir_path, f"{track_title}.flac")
             with open(path, 'wb') as file:
-                response = requests.get(url, stream=True, proxies=self.proxies, timeout=(10, 20))
+                response = requests.get(url, stream=True, timeout=(10, 20))
                 response.raise_for_status()
                 for chunk in response.iter_content(chunk_size=1024*1024):
                     if chunk:
@@ -85,7 +83,7 @@ class Downloader:
             logging.info('音频格式为mp3')
             path = os.path.join(dir_path, f"{track_title}.mp3")
             with open(path, 'wb') as file:
-                response = requests.get(url, stream=True, proxies=self.proxies)
+                response = requests.get(url, stream=True)
                 response.raise_for_status()
                 for chunk in response.iter_content(chunk_size=1024 * 1024):
                     if chunk:
