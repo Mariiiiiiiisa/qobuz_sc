@@ -46,7 +46,7 @@ pip install -r requirements.txt   # 或手动 pip install requests mutagen
 
 方法二（推荐）：
 
-直接下载zip文件并解压到本地，然后安装vscode，在vscode中打开解压的文件夹。然后下载python并安装requests库和mutagen库(这一步不会可以去b站搜教程)点击左侧文件夹中的core.py文件，在左上角点击运行python文件。然后根据提示输入内容即可。
+直接下载zip文件并解压到本地，然后安装vscode，在vscode中打开解压的文件夹。然后下载python并安装requests库和mutagen库(这一步不会可以去b站搜教程)
 
 ---
 
