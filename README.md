@@ -18,7 +18,7 @@
 ## 环境要求
 
 - Python 3.8+
-- 一个有效的 Qobuz 会员账号，并在https://play.qobuz.com/discover中登录
+- 一个有效的 Qobuz 会员账号，并在 https://play.qobuz.com/discover 中登录
 - 需要代理，请准备好 HTTP/HTTPS 代理地址
 
 ### 依赖
